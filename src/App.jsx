@@ -5,6 +5,13 @@ import GameBoard from "./components/GameBoard.tsx";
 import Log from "./components/Log.tsx";
 import GameOver from "./components/GameOver.tsx";
 
+import {
+  isWinRowFor,
+  isWinColFor,
+  isWinDiagFor,
+  isWinDiag2For,
+} from "./Helper.js";
+
 const PLAYERS = {
   X: "Player",
   O: "Bot",
@@ -37,65 +44,6 @@ function deriveGameBoard(gameTurns) {
   }
 
   return gameBoard;
-}
-
-function isWinRowFor(gameBoard, rowIdx, player) {
-  if (player === PLAYERS.X) {
-    return (
-      gameBoard[rowIdx][0] === "X" &&
-      gameBoard[rowIdx][1] === "X" &&
-      gameBoard[rowIdx][2] === "X"
-    );
-  }
-  return (
-    gameBoard[rowIdx][0] === "O" &&
-    gameBoard[rowIdx][1] === "O" &&
-    gameBoard[rowIdx][2] === "O"
-  );
-}
-
-function isWinColFor(gameBoard, colIdx, player) {
-  if (player === PLAYERS.X) {
-    return (
-      gameBoard[0][colIdx] === "X" &&
-      gameBoard[1][colIdx] === "X" &&
-      gameBoard[2][colIdx] === "X"
-    );
-  }
-  return (
-    gameBoard[0][colIdx] === "O" &&
-    gameBoard[1][colIdx] === "O" &&
-    gameBoard[2][colIdx] === "O"
-  );
-}
-function isWinDiagFor(gameBoard, player) {
-  if (player === PLAYERS.X) {
-    return (
-      gameBoard[0][0] === "X" &&
-      gameBoard[1][1] === "X" &&
-      gameBoard[2][2] === "X"
-    );
-  }
-  return (
-    gameBoard[0][0] === "O" &&
-    gameBoard[1][1] === "O" &&
-    gameBoard[2][2] === "O"
-  );
-}
-
-function isWinDiag2For(gameBoard, player) {
-  if (player === PLAYERS.X) {
-    return (
-      gameBoard[0][2] === "X" &&
-      gameBoard[1][1] === "X" &&
-      gameBoard[2][0] === "X"
-    );
-  }
-  return (
-    gameBoard[0][2] === "O" &&
-    gameBoard[1][1] === "O" &&
-    gameBoard[2][0] === "O"
-  );
 }
 
 function deriveWinner(gameBoard, players) {
@@ -150,18 +98,53 @@ function App() {
     setGameTurns((prevTurns) => {
       const currentPlayer = deriveActivePlayer(prevTurns);
 
+      // NOTE: we mark player's selection in the gameBoard only for bot simulations
+      gameBoard[rowIndex][colIndex] = "X";
+      
       if (currentPlayer === "X" && prevTurns.length !== 8) {
         // if it's bot's turn
         const squares = getAllAvailableSquares(gameBoard, rowIndex, colIndex);
-        const randSq = squares[Math.floor(Math.random() * squares.length)];
+        let selectSq = null;
+        
+        // 1. select the square that -> makes bot win
+        for (const sq of squares) {
+          gameBoard[sq[0]][sq[1]] = "O";
+          const winner = deriveWinner(gameBoard);
+          gameBoard[sq[0]][sq[1]] = "";
+          
+          if (winner === PLAYERS.O) 
+            selectSq = sq;
+        }
+        
+        // 2. block a triplet of player
+        if (selectSq === null) {
+          for (const sq of squares) {
+            gameBoard[sq[0]][sq[1]] = "X"; // LOGIC: we assume that bot moved somewhere else. Then the player can WIN by playing at this position.
+            const winner = deriveWinner(gameBoard);
+            gameBoard[sq[0]][sq[1]] = "";
+
+            if (winner === PLAYERS.X) 
+              selectSq = sq;
+          }
+        }
+
+        // NOTE: backtrack player's position
+        gameBoard[rowIndex][colIndex] = "";
+
+        // 3. random index
+        if (selectSq === null)
+          selectSq = squares[Math.floor(Math.random() * squares.length)];
 
         // mark it as O
         return [
-          { square: { row: randSq[0], col: randSq[1] }, player: "O" },
+          { square: { row: selectSq[0], col: selectSq[1] }, player: "O" },
           { square: { row: rowIndex, col: colIndex }, player: currentPlayer },
           ...prevTurns,
         ];
       }
+
+      // NOTE: back-tracking back player's selection
+      gameBoard[rowIndex][colIndex] = "";
 
       const updatedTurns = [
         { square: { row: rowIndex, col: colIndex }, player: currentPlayer },
