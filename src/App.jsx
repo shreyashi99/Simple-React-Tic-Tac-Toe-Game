@@ -17,12 +17,21 @@ const PLAYERS = {
   O: "Bot",
 };
 
+const BOT_LEVEL = {
+  EASY: "EASY",   // 25% of win chance
+  MEDIUM: "MEDIUM",  // 50% of win chance
+  HARD: "HARD",   // 90% of win chance
+};
+
+const curr_bot_diff = BOT_LEVEL.MEDIUM;
+
 const initialGameBoard = [
   [null, null, null],
   [null, null, null],
   [null, null, null],
 ];
 
+// gameTurns stores turns in a stack, where [0] means latest
 function deriveActivePlayer(gameTurns) {
   let currentPlayer = "X";
 
@@ -100,22 +109,24 @@ function App() {
 
       // NOTE: we mark player's selection in the gameBoard only for bot simulations
       gameBoard[rowIndex][colIndex] = "X";
-      
-      if (currentPlayer === "X" && prevTurns.length !== 8) {
+
+      // NOTE: check if player WILL win by this move. Then bot should not work
+      const willPlayerWin = deriveWinner(gameBoard) === PLAYERS.X;
+
+      if (currentPlayer === "X" && prevTurns.length !== 8 && !willPlayerWin) {
         // if it's bot's turn
         const squares = getAllAvailableSquares(gameBoard, rowIndex, colIndex);
         let selectSq = null;
-        
+
         // 1. select the square that -> makes bot win
         for (const sq of squares) {
           gameBoard[sq[0]][sq[1]] = "O";
           const winner = deriveWinner(gameBoard);
           gameBoard[sq[0]][sq[1]] = "";
-          
-          if (winner === PLAYERS.O) 
-            selectSq = sq;
+
+          if (winner === PLAYERS.O) selectSq = sq;
         }
-        
+
         // 2. block a triplet of player
         if (selectSq === null) {
           for (const sq of squares) {
@@ -123,13 +134,21 @@ function App() {
             const winner = deriveWinner(gameBoard);
             gameBoard[sq[0]][sq[1]] = "";
 
-            if (winner === PLAYERS.X) 
-              selectSq = sq;
+            if (winner === PLAYERS.X) selectSq = sq;
           }
         }
 
         // NOTE: backtrack player's position
         gameBoard[rowIndex][colIndex] = "";
+        
+        const lim = curr_bot_diff === BOT_LEVEL.EASY ? 0.25 : curr_bot_diff === BOT_LEVEL.MEDIUM ? 0.50 : 1;
+        const shouldWin = Math.random() <= lim;
+
+        console.log(`patt :: bot trying to = ${(shouldWin ? 'WIN' : 'LOSE')}`);
+        
+        if (!shouldWin) {
+          selectSq = null;
+        }
 
         // 3. random index
         if (selectSq === null)
