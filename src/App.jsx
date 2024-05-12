@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState } from "react";
 
-import Player from './components/Player.tsx';
-import GameBoard from './components/GameBoard.tsx';
-import Log from './components/Log.tsx';
-import GameOver from './components/GameOver.tsx';
-import { WINNING_COMBINATIONS } from './components/winning_combinations.js';
+import Player from "./components/Player.tsx";
+import GameBoard from "./components/GameBoard.tsx";
+import Log from "./components/Log.tsx";
+import GameOver from "./components/GameOver.tsx";
+import { WINNING_COMBINATIONS } from "./components/winning_combinations.js";
 
 const PLAYERS = {
-  X: 'Player 1',
-  O: 'Player 2'
+  X: "Player",
+  O: "Bot",
 };
 
 const initialGameBoard = [
@@ -18,10 +18,10 @@ const initialGameBoard = [
 ];
 
 function deriveActivePlayer(gameTurns) {
-  let currentPlayer = 'X';
+  let currentPlayer = "X";
 
-  if (gameTurns.length > 0 && gameTurns[0].player === 'X') {
-    currentPlayer = 'O';
+  if (gameTurns.length > 0 && gameTurns[0].player === "X") {
+    currentPlayer = "O";
   }
 
   return currentPlayer;
@@ -63,6 +63,22 @@ function deriveWinner(gameBoard, players) {
   return winner;
 }
 
+
+// example returns = [[0,0], [0,2]]
+function getAllAvailableSquares(gameBoard) {
+  let availbleSquares = [];
+  for (let i = 0; i < gameBoard.length; ++i) {
+    for (let j = 0; j < gameBoard[i].length; ++j) {
+      const sym = gameBoard[i][j];
+      if (sym !== "O" && sym !== "X") {
+        availbleSquares.push([i, j]);
+      }
+    }
+  }
+
+  return availbleSquares;
+}
+
 function App() {
   const [players, setPlayers] = useState(PLAYERS);
   const [gameTurns, setGameTurns] = useState([]);
@@ -75,6 +91,19 @@ function App() {
   function handleSelectSquare(rowIndex, colIndex) {
     setGameTurns((prevTurns) => {
       const currentPlayer = deriveActivePlayer(prevTurns);
+
+      if (currentPlayer === "X") {
+        // if it's bot's turn
+        const squares = getAllAvailableSquares(gameBoard);
+        const randSq = squares[Math.floor(Math.random() * squares.length)];
+
+        // mark it as O
+        return [
+          { square: { row: randSq[0], col: randSq[1] }, player: 'O' },
+          { square: { row: rowIndex, col: colIndex }, player: currentPlayer },
+          ...prevTurns,
+        ];
+      }
 
       const updatedTurns = [
         { square: { row: rowIndex, col: colIndex }, player: currentPlayer },
@@ -90,10 +119,10 @@ function App() {
   }
 
   function handlePlayerNameChange(symbol, newName) {
-    setPlayers(prevPlayers => {
+    setPlayers((prevPlayers) => {
       return {
         ...prevPlayers,
-        [symbol]: newName
+        [symbol]: newName,
       };
     });
   }
@@ -105,13 +134,13 @@ function App() {
           <Player
             initialName={PLAYERS.X}
             symbol="X"
-            isActive={activePlayer === 'X'}
+            isActive={activePlayer === "X"}
             onChangeName={handlePlayerNameChange}
           />
           <Player
             initialName={PLAYERS.O}
             symbol="O"
-            isActive={activePlayer === 'O'}
+            isActive={activePlayer === "O"}
             onChangeName={handlePlayerNameChange}
           />
         </ol>
