@@ -18,10 +18,12 @@ const PLAYERS = {
 };
 
 const BOT_LEVEL = {
-  EASY: "EASY",   // 25% of win chance
-  MEDIUM: "MEDIUM",  // 50% of win chance
-  HARD: "HARD",   // 90% of win chance
+  EASY: "EASY", // 25% of win chance
+  MEDIUM: "MEDIUM", // 50% of win chance
+  HARD: "HARD", // 90% of win chance
 };
+
+let isBotThinking = false;
 
 const curr_bot_diff = BOT_LEVEL.MEDIUM;
 
@@ -104,6 +106,8 @@ function App() {
   const hasDraw = gameTurns.length === 9 && !winner;
 
   function handleSelectSquare(rowIndex, colIndex) {
+    if (isBotThinking) return; // SAFETY: when bot is thinking then don't allow player to make any move.
+
     setGameTurns((prevTurns) => {
       const currentPlayer = deriveActivePlayer(prevTurns);
 
@@ -112,11 +116,14 @@ function App() {
 
       // NOTE: check if player WILL win by this move. Then bot should not work
       const willPlayerWin = deriveWinner(gameBoard) === PLAYERS.X;
+      const willBotPlay =
+        currentPlayer === "X" && prevTurns.length !== 8 && !willPlayerWin;
+      let selectSq = null;
 
-      if (currentPlayer === "X" && prevTurns.length !== 8 && !willPlayerWin) {
+      if (willBotPlay) {
         // if it's bot's turn
         const squares = getAllAvailableSquares(gameBoard, rowIndex, colIndex);
-        let selectSq = null;
+        isBotThinking = true;
 
         // 1. select the square that -> makes bot win
         for (const sq of squares) {
@@ -138,28 +145,21 @@ function App() {
           }
         }
 
-        // NOTE: backtrack player's position
-        gameBoard[rowIndex][colIndex] = "";
-        
-        const lim = curr_bot_diff === BOT_LEVEL.EASY ? 0.25 : curr_bot_diff === BOT_LEVEL.MEDIUM ? 0.50 : 1;
+        const lim =
+          curr_bot_diff === BOT_LEVEL.EASY
+            ? 0.25
+            : curr_bot_diff === BOT_LEVEL.MEDIUM
+            ? 0.5
+            : 1;
         const shouldWin = Math.random() <= lim;
 
-        console.log(`patt :: bot trying to = ${(shouldWin ? 'WIN' : 'LOSE')}`);
-        
-        if (!shouldWin) {
-          selectSq = null;
-        }
+        console.log(`patt :: bot trying to = ${shouldWin ? "WIN" : "LOSE"}`);
+
+        if (!shouldWin) selectSq = null;
 
         // 3. random index
         if (selectSq === null)
           selectSq = squares[Math.floor(Math.random() * squares.length)];
-
-        // mark it as O
-        return [
-          { square: { row: selectSq[0], col: selectSq[1] }, player: "O" },
-          { square: { row: rowIndex, col: colIndex }, player: currentPlayer },
-          ...prevTurns,
-        ];
       }
 
       // NOTE: back-tracking back player's selection
@@ -170,8 +170,26 @@ function App() {
         ...prevTurns,
       ];
 
+      if (willBotPlay) {
+        console.log("patt :: bot thinking " + (selectSq));
+        setTimeout(() => {
+          setGameTurnBot(selectSq);
+          isBotThinking = false;
+          console.log("patt :: bot made a move");
+        }, 1000);
+      }
+
       return updatedTurns;
     });
+
+    function setGameTurnBot(selectSq) {
+      setGameTurns((uptoPlayerTurns) => {
+        return [
+          { square: { row: selectSq[0], col: selectSq[1] }, player: "O" },
+          ...uptoPlayerTurns,
+        ];
+      });
+    }
   }
 
   function handleRestart() {
